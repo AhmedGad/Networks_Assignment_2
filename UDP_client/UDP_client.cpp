@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
 			while (true) {
 				packet* tmp = 0;
 				for (int i = 0; i < v.size(); ++i)
-					if (v[i] == lastSeqno) {
+					if (v[i]->seqno == lastSeqno) {
 						tmp = v[i];
 						v.erase(v.begin() + i);
 					}
