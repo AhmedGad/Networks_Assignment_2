@@ -50,7 +50,6 @@ int main(int argc, char *argv[]) {
 	char *FileName; /* String to send to echo server */
 	char echoBuffer[MAX_FILE_NAME_LEN + 1]; /* Buffer for echo string */
 	int echoStringLen; /* Length of string to echo */
-	int respStringLen; /* Size of received datagram */
 	struct sigaction myAction;
 
 	if ((argc < 4) || (argc > 5)) /* Test for correct number of arguments */
@@ -95,25 +94,6 @@ int main(int argc, char *argv[]) {
 	if (sigaction(SIGALRM, &myAction, 0) < 0)
 		DieWithError("sigaction() failed for SIGALRM");
 
-	alarm(TIMEOUT_SECS); /* Set the timeout */
-
-	//receive confirmation
-	if ((respStringLen = recvfrom(sock, echoBuffer, MAX_FILE_NAME_LEN, 0,
-			(struct sockaddr *) &fromAddr, &fromSize)) < 0) {
-		if (errno == EINTR) /* Alarm went off  */
-		{
-			DieWithError("No Response");
-		} else
-			DieWithError("recvfrom() failed");
-	}
-
-	alarm(0);
-
-	echoBuffer[respStringLen] = '\0';
-	if (strcmp("CONFIRMED", echoBuffer)) {
-		DieWithError("Error while receiving confirmation from server");
-	}
-
 	vector<packet*> v;
 	uint32_t lastSeqno = 0;
 	uint32_t lastLen = 0;
@@ -123,8 +103,19 @@ int main(int argc, char *argv[]) {
 
 	ofstream file(FileName, ios::out | ios::binary);
 
+	alarm(TIMEOUT_SECS); /* Set the timeout */
+
+	//receive confirmation
+	if ((recvfrom(sock, echoBuffer, MAX_FILE_NAME_LEN, 0,
+			(struct sockaddr *) &fromAddr, &fromSize)) < 0) {
+
+	}
+
+	bool ok = false;
+
 	while (recvfrom(sock, cur, MAX_FILE_NAME_LEN, 0,
 			(struct sockaddr *) &fromAddr, &fromSize) >= 0) {
+		alarm(0);
 		// send ack
 		ack->ackno = cur->seqno;
 		sendto(sock, ack, sizeof(ack_packet), 0,
@@ -149,6 +140,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (lastLen == 0) {
+				ok = true;
 				break;
 			}
 		} else {
@@ -164,6 +156,12 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
+	if (!ok)
+		if (errno == EINTR) /* Alarm went off  */
+		{
+			DieWithError("No Response");
+		} else
+			DieWithError("recvfrom() failed");
 
 	file.flush();
 	file.close();
