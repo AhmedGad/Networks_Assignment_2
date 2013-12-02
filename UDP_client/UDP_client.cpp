@@ -112,16 +112,15 @@ int main(int argc, char *argv[]) {
 //	}
 
 	bool ok = false;
-	int counter = 0;
-	while (recvfrom(sock, cur, sizeof(cur), 0, (struct sockaddr *) &fromAddr,
-			&fromSize) > 0) {
 
-		if (cur->len == 0)
-			break;
-
-		counter++;
+	ssize_t reveivedLen;
+	while ((reveivedLen = recvfrom(sock, cur, sizeof(packet), 0,
+			(struct sockaddr *) &fromAddr, &fromSize)) > 0) {
 
 		alarm(0);
+		if (reveivedLen < sizeof(packet)) {
+			break;
+		}
 		// send ack
 		ack->ackno = cur->seqno;
 		sendto(sock, ack, sizeof(ack_packet), 0,
@@ -162,14 +161,13 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	cout << "counter = " << counter << endl;
-	if (!ok)
+	if (!ok) {
 		if (errno == EINTR) /* Alarm went off  */
 		{
 			DieWithError("No Response");
 		} else
 			DieWithError("recvfrom() failed");
-
+	}
 	file.flush();
 	file.close();
 	close(sock);
