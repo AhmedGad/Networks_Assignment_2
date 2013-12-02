@@ -105,16 +105,22 @@ int main(int argc, char *argv[]) {
 
 	alarm(TIMEOUT_SECS); /* Set the timeout */
 
-	//receive confirmation
-	if ((recvfrom(sock, echoBuffer, MAX_FILE_NAME_LEN, 0,
-			(struct sockaddr *) &fromAddr, &fromSize)) < 0) {
-
-	}
+//	//receive confirmation
+//	if ((recvfrom(sock, echoBuffer, MAX_FILE_NAME_LEN, 0,
+//			(struct sockaddr *) &fromAddr, &fromSize)) < 0) {
+//
+//	}
 
 	bool ok = false;
+	int counter = 0;
+	while (recvfrom(sock, cur, sizeof(cur), 0, (struct sockaddr *) &fromAddr,
+			&fromSize) > 0) {
 
-	while (recvfrom(sock, cur, MAX_FILE_NAME_LEN, 0,
-			(struct sockaddr *) &fromAddr, &fromSize) >= 0) {
+		if (cur->len == 0)
+			break;
+
+		counter++;
+
 		alarm(0);
 		// send ack
 		ack->ackno = cur->seqno;
@@ -156,6 +162,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
+	cout << "counter = " << counter << endl;
 	if (!ok)
 		if (errno == EINTR) /* Alarm went off  */
 		{
