@@ -105,22 +105,16 @@ int main(int argc, char *argv[]) {
 
 	alarm(TIMEOUT_SECS); /* Set the timeout */
 
-//	//receive confirmation
-//	if ((recvfrom(sock, echoBuffer, MAX_FILE_NAME_LEN, 0,
-//			(struct sockaddr *) &fromAddr, &fromSize)) < 0) {
-//
-//	}
-
 	bool ok = false;
 
-	ssize_t reveivedLen;
-	while ((reveivedLen = recvfrom(sock, cur, sizeof(packet), 0,
-			(struct sockaddr *) &fromAddr, &fromSize)) > 0) {
+	while (recvfrom(sock, cur, sizeof(packet), 0, (struct sockaddr *) &fromAddr,
+			&fromSize) >= 0) {
 
-		alarm(0);
-		if (reveivedLen < sizeof(packet)) {
+		if (cur->len == 0) { // last packet
 			break;
 		}
+
+		alarm(0);
 		// send ack
 		ack->ackno = cur->seqno;
 		sendto(sock, ack, sizeof(ack_packet), 0,

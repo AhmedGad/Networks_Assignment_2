@@ -47,22 +47,19 @@ void bufferData() {
 	packet currentPacket;
 
 	int curSequenceNumber = 0;
-	int counter = 0;
 	while (myFile.good()) {
 		currentPacket.len = myFile.read(currentPacket.data,
 				sizeof(currentPacket.data)).gcount();
 		currentPacket.seqno = (curSequenceNumber++);
 		sendto(sock, &currentPacket, sizeof(currentPacket), 0,
 				(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr));
-		counter++;
+
 		// -------------Ack ay kalam
 		ack_packet ackPacket;
 		recvfrom(sock, &ackPacket, sizeof(ack_packet), 0,
 				(struct sockaddr *) &echoClntAddr, &clntLen);
 		// -------------
 	}
-
-	cout << "counter = " << counter << endl;
 
 	// Send last packet with data length =  0 to inform the client to close
 	currentPacket.len = 0;
