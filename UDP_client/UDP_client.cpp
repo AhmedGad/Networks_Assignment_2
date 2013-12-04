@@ -17,7 +17,6 @@ using namespace std;
 
 struct packet {
 	/* Header */
-	uint16_t cksum; /* Optional bonus part */
 	uint16_t len;
 	uint32_t seqno;
 	/* Data */
@@ -26,7 +25,6 @@ struct packet {
 
 /* Ack-only packets are only 8 bytes */
 struct ack_packet {
-	uint16_t cksum; /* Optional bonus part */
 	uint16_t len;
 	uint32_t ackno;
 };
@@ -48,7 +46,6 @@ int main(int argc, char *argv[]) {
 	unsigned int fromSize;
 	char *servIP;
 	char *FileName; /* String to send to echo server */
-	char echoBuffer[MAX_FILE_NAME_LEN + 1]; /* Buffer for echo string */
 	int echoStringLen; /* Length of string to echo */
 	struct sigaction myAction;
 
@@ -116,8 +113,6 @@ int main(int argc, char *argv[]) {
 		sendto(sock, ack, sizeof(ack_packet), 0,
 				(struct sockaddr *) &echoServAddr, sizeof(echoServAddr));
 		if (cur->seqno == lastSeqno) {
-//			cout << "Writing packet no : " << cur->seqno << " " << cur->len
-//					<< endl;
 			file.write(cur->data, cur->len);
 
 			lastLen = cur->len;
@@ -132,8 +127,6 @@ int main(int argc, char *argv[]) {
 				if (tmp == 0) {
 					break;
 				}
-//				cout << "Writing packet no : " << tmp->seqno << " " << tmp->len
-//						<< endl;
 				file.write(tmp->data, tmp->len);
 
 				lastLen = tmp->len;
