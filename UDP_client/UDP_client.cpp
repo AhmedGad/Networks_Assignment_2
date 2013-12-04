@@ -21,7 +21,7 @@ struct packet {
 	uint16_t len;
 	uint32_t seqno;
 	/* Data */
-	char data[500]; /* Not always 500 bytes, can be less */
+	char data[1024]; /* Not always 500 bytes, can be less */
 };
 
 /* Ack-only packets are only 8 bytes */
@@ -110,17 +110,16 @@ int main(int argc, char *argv[]) {
 	while (recvfrom(sock, cur, sizeof(packet), 0, (struct sockaddr *) &fromAddr,
 			&fromSize) >= 0) {
 
-		if (cur->len == 0) { // last packet
-			break;
-		}
-
 		alarm(0);
 		// send ack
 		ack->ackno = cur->seqno;
 		sendto(sock, ack, sizeof(ack_packet), 0,
 				(struct sockaddr *) &echoServAddr, sizeof(echoServAddr));
 		if (cur->seqno == lastSeqno) {
+//			cout << "Writing packet no : " << cur->seqno << " " << cur->len
+//					<< endl;
 			file.write(cur->data, cur->len);
+
 			lastLen = cur->len;
 			lastSeqno++;
 			while (true) {
@@ -133,11 +132,13 @@ int main(int argc, char *argv[]) {
 				if (tmp == 0) {
 					break;
 				}
+//				cout << "Writing packet no : " << tmp->seqno << " " << tmp->len
+//						<< endl;
 				file.write(tmp->data, tmp->len);
+
 				lastLen = tmp->len;
 				lastSeqno++;
 			}
-
 			if (lastLen == 0) {
 				ok = true;
 				break;
