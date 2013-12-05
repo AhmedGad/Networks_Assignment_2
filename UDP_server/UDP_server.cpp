@@ -11,6 +11,7 @@
 #include <errno.h>      /* for errno */
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <unistd.h>
 #include <vector>
 #include <time.h>       /* time */
@@ -42,6 +43,8 @@ char *DIR;
 double ppl; /* probability fo packet loss*/
 struct sockaddr_in echoServAddr; /* Server address */
 unsigned short echoServPort; /* Server port */
+char readProtocol[ECHOMAX]; // gobackN - Selective Repeat - Stop and wait
+string protocolType;
 
 time_t time_outs[MAX_WINDOW_SIZE];
 packet filePackets[MAX_WINDOW_SIZE];
@@ -56,6 +59,7 @@ void checkAckReceived() {
 	if (recvfrom(sock, &ackPacket, sizeof(ack_packet), MSG_DONTWAIT,
 			(struct sockaddr *) &echoClntAddr, &clntLen) > 0) {
 		if (ackPacket.ackno >= base) {
+			cout << "Packet # " << ackPacket.ackno << " acked" << endl;
 			ackedPackets[ackPacket.ackno % MAX_WINDOW_SIZE] = true;
 		}
 	}
@@ -74,6 +78,9 @@ void checkPacketLoss() {
 				sendto(sock, &(filePackets[currentIndex]), sizeof(packet), 0,
 						(struct sockaddr *) &echoClntAddr,
 						sizeof(echoClntAddr));
+
+				cout << " ++++ Packet # " << filePackets[currentIndex].seqno
+						<< " timed out --> Resending" << endl;
 
 				// reset timer
 				time(&currentTime);
@@ -99,13 +106,15 @@ void advanceWindow() {
 						(struct sockaddr *) &echoClntAddr,
 						sizeof(echoClntAddr));
 			}
+
+			cout << " ++++ Sending Packet # " << currPacket.seqno << endl;
 			filePackets[nextPacketSeqNumber % MAX_WINDOW_SIZE] = currPacket;
 			nextPacketSeqNumber++;
 		}
 	}
 }
 
-void selectiveRepeat() {
+void go() {
 
 	// sending packets
 	for (int index = 0; myFile.good() && index < window_size; index++) {
@@ -117,6 +126,7 @@ void selectiveRepeat() {
 			sendto(sock, &currentPacket, sizeof(currentPacket), 0,
 					(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr));
 		}
+		cout << " ++++ Sending Packet # " << currentPacket.seqno << endl;
 		filePackets[nextPacketSeqNumber % MAX_WINDOW_SIZE] = (currentPacket);
 		nextPacketSeqNumber++;
 	}
@@ -132,9 +142,17 @@ void selectiveRepeat() {
 	}
 }
 
+void selectiveRepeat() {
+	go();
+}
+
 void stopAndWait() {
 	window_size = 1;
-	selectiveRepeat();
+	go();
+}
+
+void goBackN() {
+	go();
 }
 
 void bufferData() {
@@ -148,8 +166,13 @@ void bufferData() {
 		time_outs[i] = initialTime;
 	}
 
-	selectiveRepeat();
-//	stopAndWait();
+	if (protocolType == "GoBackN") {
+		goBackN();
+	} else if (protocolType == "SelectiveRepeat") {
+		selectiveRepeat();
+	} else if (protocolType == "StopAndWait") {
+		stopAndWait();
+	}
 
 // Send last packet with data length =  0 to inform the client to close
 	packet lastPacket;
@@ -175,6 +198,11 @@ void Handler() {
 		printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
 		echoBuffer[recvMsgSize] = '\0';
 		DIR = echoBuffer;
+
+		if (sendto(sock, protocolType.c_str(), ECHOMAX, 0,
+				(struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) < 0) {
+			printf("Error Sending Protocol\n");
+		}
 		bufferData();
 	}
 }
@@ -191,6 +219,9 @@ void initServer() {
 	srand(seed_rand);
 
 	scanf("%lf", &ppl); //probability of packet loss
+
+	scanf("%s", readProtocol);
+	protocolType = string(readProtocol);
 
 	fclose(stdin);
 

@@ -9,7 +9,9 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <string>
 
+#define ECHOMAX 255     /* Longest string to echo */
 #define MAX_FILE_NAME_LEN         255
 #define TIMEOUT_SECS    5
 
@@ -104,12 +106,28 @@ int main(int argc, char *argv[]) {
 
 	bool ok = false;
 
+	char protocol[ECHOMAX];
+	int protocolLength;
+	if ((protocolLength = recvfrom(sock, protocol, ECHOMAX, 0,
+			(struct sockaddr *) &fromAddr, &fromSize)) < 0) {
+		printf("Unsupported Protocol");
+	}
+	protocol[protocolLength] = '\0';
+	string protocolType = protocol;
+
 	while (recvfrom(sock, cur, sizeof(packet), 0, (struct sockaddr *) &fromAddr,
 			&fromSize) >= 0) {
 
 		alarm(0);
 		// send ack
 		ack->ackno = cur->seqno;
+
+		if (protocolType == "GoBackN") {
+			if (cur->seqno != lastSeqno) {
+				continue;
+			}
+		}
+
 		sendto(sock, ack, sizeof(ack_packet), 0,
 				(struct sockaddr *) &echoServAddr, sizeof(echoServAddr));
 		if (cur->seqno == lastSeqno) {
